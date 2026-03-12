@@ -2,3 +2,4 @@
 __pycache__/
 *.pyc
 twitch_badges_snapshot.json
+subscribed_channels.json
