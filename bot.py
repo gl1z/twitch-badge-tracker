@@ -9,7 +9,6 @@ from config import TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, DISCORD_TOKEN
 SNAPSHOT_FILE = "twitch_badges_snapshot.json"
 CHANNELS_FILE = "subscribed_channels.json"
 
-# Twitch OAuth token management
 async def get_twitch_token(session):
     url = "https://id.twitch.tv/oauth2/token"
     params = {
@@ -20,8 +19,7 @@ async def get_twitch_token(session):
     async with session.post(url, params=params) as response:
         data = await response.json()
         return data["access_token"]
-    
-    # Badge fetching from Twitch Helix API
+
 async def fetch_badges(session, token):
     url = "https://api.twitch.tv/helix/chat/badges/global"
     headers = {
@@ -34,7 +32,6 @@ async def fetch_badges(session, token):
         print(f"Failed to fetch badges: {response.status}")
         return None
 
-# Local snapshot management
 def load_snapshot():
     if os.path.exists(SNAPSHOT_FILE):
         with open(SNAPSHOT_FILE, "r") as f:
@@ -55,7 +52,6 @@ def save_subscribed_channels(channels):
     with open(CHANNELS_FILE, "w") as f:
         json.dump(list(channels), f)
 
-        # Badge comparison
 def find_new_badges(old_data, new_data):
     old_ids = set()
     for badge in old_data.get("data", []):
@@ -76,13 +72,11 @@ def find_new_badges(old_data, new_data):
 
     return new_badges
 
-# Bot setup
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 subscribed_channels = load_subscribed_channels()
 
-# Commands
 @bot.command(name="status")
 async def status(ctx):
     await ctx.send("Bot is running and watching for badge updates.")
@@ -109,9 +103,11 @@ async def check_badges_command(ctx):
 
     if new_badges:
         for badge in new_badges:
+            streamdb_url = f"https://www.streamdatabase.com/twitch/global-badges/{badge['set_id']}/{badge['version_id']}"
             embed = discord.Embed(
                 title=f"New Badge: {badge['title']}",
                 description=f"Set: {badge['set_id']} | Version: {badge['version_id']}",
+                url=streamdb_url,
                 color=discord.Color.purple()
             )
             if badge["image"]:
@@ -122,9 +118,7 @@ async def check_badges_command(ctx):
         await ctx.send("No new badges found.")
 
 @bot.command(name="help")
-
 async def help_command(ctx):
-
     embed = discord.Embed(
         title="TBT BadgeBot Commands",
         color=discord.Color.blurple()
@@ -135,7 +129,6 @@ async def help_command(ctx):
     embed.add_field(name="/unsubscribe", value="Unsubscribe this channel from updates", inline=False)
     await ctx.send(embed=embed)
 
-    # Slash commands
 @bot.tree.command(name="subscribe", description="Subscribe this channel to badge update notifications")
 async def subscribe(interaction: discord.Interaction):
     if not isinstance(interaction.channel, discord.TextChannel):
@@ -144,7 +137,7 @@ async def subscribe(interaction: discord.Interaction):
     subscribed_channels.add(interaction.channel.id)
     save_subscribed_channels(subscribed_channels)
     await interaction.response.send_message(
-        f"This channel will now receive badge update notifications.", ephemeral=True
+        "This channel will now receive badge update notifications.", ephemeral=True
     )
 
 @bot.tree.command(name="unsubscribe", description="Unsubscribe this channel from badge update notifications")
@@ -156,7 +149,6 @@ async def unsubscribe(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("This channel is not subscribed.", ephemeral=True)
 
-# Scheduled badge check — runs every hour
 @tasks.loop(hours=1)
 async def scheduled_badge_check():
     if not subscribed_channels:
@@ -182,15 +174,16 @@ async def scheduled_badge_check():
         return
 
     for badge in new_badges:
+        streamdb_url = f"https://www.streamdatabase.com/twitch/global-badges/{badge['set_id']}/{badge['version_id']}"
         embed = discord.Embed(
             title=f"New Twitch Badge: {badge['title']}",
             description=f"**{badge['set_id']}** — version {badge['version_id']}",
-            url="https://blog.twitch.tv",
+            url=streamdb_url,
             color=discord.Color.purple()
         )
         if badge["image"]:
             embed.set_image(url=badge["image"])
-        embed.set_footer(text="Check the Twitch blog for unlock requirements")
+        embed.set_footer(text="View full badge details on StreamDatabase")
 
         for channel_id in subscribed_channels:
             channel = bot.get_channel(channel_id)
@@ -202,7 +195,6 @@ async def scheduled_badge_check():
 
     save_snapshot(new_data)
 
-# Bot startup
 @bot.event
 async def on_ready():
     await bot.tree.sync()
