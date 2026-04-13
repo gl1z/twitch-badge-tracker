@@ -59,7 +59,9 @@ python bot.py
 
 The bot authenticates with Twitch using OAuth client credentials, then fetches the full list of global badges from the Helix API. It compares each `set_id:version_id` pair against a local snapshot. Any pairs not in the previous snapshot are new badges — the bot sends a Discord embed for each one and updates the snapshot.
 
-On first run, the bot saves all current badges as a baseline without sending notifications.
+On first run, the bot saves all current badges as a baseline without sending notifications. 
+
+Badge embed notifications link to the corresponding badge entry on StreamDatabase, giving users direct access to unlock requirements and badge details.
 
 ## Tech Stack
 
